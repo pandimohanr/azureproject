@@ -1,0 +1,12 @@
+﻿
+
+
+##create an Azure VM using PS - Default options ###
+
+New-AzureRmResourceGroup -ResourceGroupName "VMResourceGroup" -Location "East US"
+
+
+
+New-AzureRmVm  -ResourceGroupName "VMResourceGroup" -Name "myVM" -Location "East US" -VirtualNetworkName "myVnet" -SubnetName "mySubnet" -SecurityGroupName "myNetworkSecurityGroup" -PublicIpAddressName "myPublicIpAddress" -OpenPorts 80,3389
+
+

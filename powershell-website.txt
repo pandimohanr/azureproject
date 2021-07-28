@@ -1,0 +1,18 @@
+﻿
+#Login-AzureRmAccount
+
+
+
+###PARAMETERS########
+$resourceGroupname ='demo-resggrp-eus'
+$location ='East US' 
+$websitename= 'demowebappeus'
+
+
+#Create a new Resource Group
+New-AzureRmResourceGroup -Name  $resourceGroupname -Location $location
+
+#Create a new website
+New-AzureRmWebApp -ResourceGroupName $resourceGroupname -Name $websitename -Location $location
+
+
