@@ -1,0 +1,39 @@
+<#
+Status Check 
+Azure Managed disk encryption - SSE with CMK
+Created by: Vikram Sawant
+#>
+ 
+#Location of the scripts and files stored
+$Path = "C:\temp\"
+ 
+#Path of all file with file names
+$InputFile = $Path + "cmkstatusdeatils.csv"
+ 
+#Log File
+$LogFile = $Path + "cmkstatuslogs.log"
+Start-Transcript -Path $LogFile -Append
+ 
+#Import the CSV file
+$VMs = Import-Csv -Path $InputFile
+ 
+Connect-AzAccount
+ 
+foreach ($VM in $VMs) 
+{
+ 
+        #Declare Variables required
+        Set-AzContext -SubscriptionName $VM.subscription.trim()
+        $vmname = $VM.vmname.trim()
+        $resourceGroupName = $VM.resourceGroupName.trim()
+       
+        Write-Host "Working on VM:" $vmname
+ 
+        #Get VM Details
+        $vmInfo = Get-AzVM -ResourceGroupName $resourceGroupName -Name $vmname
+ 
+       
+        #Get the status of encryption
+        $vmInfo | Format-Table Name, @{Label = "EncryptionAtHost"; Expression = { ($_.SecurityProfile).EncryptionAtHost } }
+        (Get-AzDisk | where { $_.name -match $vmname } | Where-Object -Property DiskState -eq “Attached”) | Format-Table Name, @{Label = "DiskEncryptionType"; Expression = { ($_.Encryption).Type }}
+ }
