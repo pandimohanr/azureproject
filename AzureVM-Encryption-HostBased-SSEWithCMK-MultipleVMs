@@ -1,0 +1,66 @@
+<#
+Azure VM Disk Encryption:
+Enables Host Based Encryption for the VM
+Enables Azure Managed disk encryption - SSE with CMK
+Created by: Jeet Jobanputra (Cloud Migration and Implementation - Associate Manager)
+#>
+
+#Location of the scripts and files stored
+$Path = "C:\Scripts\"
+
+#Path of all file with file names
+$InputFile = $Path + "vmencryptiondetails.csv"
+
+#Log File
+$LogFile = $Path + "vmencryptionlogs.log"
+Start-Transcript -Path $LogFile -Append
+
+#Import the CSV file
+$VMs = Import-Csv -Path $InputFile
+
+Connect-AzAccount
+
+foreach ($VM in $VMs) {
+    If ($VM.Create.Trim() -eq "Y") {
+
+        #Declare Variables required
+        Set-AzContext -SubscriptionName $VM.subscription.trim()
+        $vmname = $VM.vmname.trim()
+        $resourceGroupName = $VM.resourceGroupName.trim()
+        $kvrg = $VM.kvrg.trim()
+        $diskEncryptionSetName = $VM.diskencryptionsetname.trim()
+
+        Write-Host "Working on VM:" $vmname
+
+        #Get VM Details
+        $vmInfo = Get-AzVM -ResourceGroupName $resourceGroupName -Name $vmname
+
+        #Get Disk Encryption Set Details
+        $diskEncryptionSet = Get-AzDiskEncryptionSet -ResourceGroupName $kvrg -Name $diskEncryptionSetName
+        
+        #Stop Azure VM
+        Stop-AzVM -ResourceGroupName $ResourceGroupName -Name $vmname -Force
+
+        #Enable Encryption at host
+        Update-AzVM -VM $vmInfo -ResourceGroupName $ResourceGroupName -EncryptionAtHost $true
+
+        #Get managed disks of the VM
+        $manageddisks = (Get-AzDisk | where { $_.name -match $vmname }).name
+
+        #Enable SSE with CMK for all managed disks
+        foreach ($manageddisk in $manageddisks) {
+            New-AzDiskUpdateConfig -EncryptionType "EncryptionAtRestWithCustomerKey" -DiskEncryptionSetId $diskEncryptionSet.Id | Update-AzDisk -ResourceGroupName $ResourceGroupName -DiskName $manageddisk
+        }
+
+        #Start Azure VM
+        Start-AzVM -ResourceGroupName $ResourceGroupName -Name $vmname
+
+        #Get the status of encryption
+        $vmInfo | Format-Table Name, @{Label = "EncryptionAtHost"; Expression = { ($_.SecurityProfile).EncryptionAtHost } }
+        (Get-AzDisk | where { $_.name -match $vmname }) | Format-Table Name, @{Label = "DiskEncryptionType"; Expression = { ($_.Encryption).Type } 
+    } 
+}
+
+Stop-Transcript
+   
+    
